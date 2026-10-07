@@ -4,7 +4,7 @@
 
 **Get a Windows desktop notification when a Riot friend comes online in VALORANT—even with Riot Client and VALORANT closed.** This lightweight Node.js watcher connects directly to Riot's XMPP chat service, reuses your saved remember-me login, and tracks friends by their stable PUUID.
 
-Built for people who want a VALORANT friend online alert without keeping the game or launcher open. Includes a detailed [technical guide to Riot authentication and friend presence](TECHNICAL-GUIDE.md).
+Built for people who want a Riot Client friend online alert without keeping the game or launcher open. Includes a detailed [technical guide to Riot authentication and friend presence](TECHNICAL-GUIDE.md).
 
 ## Features
 
