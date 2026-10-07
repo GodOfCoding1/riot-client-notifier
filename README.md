@@ -1,4 +1,4 @@
-# VALORANT Friend Notifier — Windows Desktop Alerts
+# Riot Client Friend Notifier — Windows Desktop Alerts
 
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4)](#requirements) [![Node.js: 22+](https://img.shields.io/badge/Node.js-22%2B-339933)](#installation) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
