@@ -1,10 +1,10 @@
-# Riot Client Friend Notifier
+# Riot Client Notifier — Windows Friend Online Alerts
 
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4)](#requirements) [![Node.js: 22+](https://img.shields.io/badge/Node.js-22%2B-339933)](#installation) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Get a Windows desktop notification when a Riot friend comes online in VALORANT—even with Riot Client and VALORANT closed.** This lightweight Node.js watcher connects directly to Riot's XMPP chat service, reuses your saved remember-me login, and tracks friends by their stable PUUID.
+**Riot Client Notifier** is a lightweight Windows desktop notification app for Riot Games friends. It currently alerts when a friend comes online in **VALORANT**, even with Riot Client and VALORANT closed. The Node.js watcher connects to Riot's XMPP chat service, renews your saved remember-me login, and tracks friends by their stable PUUID.
 
-Built for people who want a Riot Client friend online alert without keeping the game or launcher open. Includes a detailed [technical guide to Riot authentication and friend presence](TECHNICAL-GUIDE.md).
+Looking for a Riot Client friend notifier, a VALORANT online alert, or a Riot Games presence notification? This app alerts when a selected Riot friend enters VALORANT. Riot's wider game ecosystem also includes **League of Legends (LoL), Teamfight Tactics (TFT), Legends of Runeterra (LoR), League of Legends: Wild Rift, and 2XKO**. Those titles are included as Riot ecosystem keywords; this project's friend activity alerts currently detect VALORANT presence only. Read the [technical guide to Riot authentication and friend presence](TECHNICAL-GUIDE.md).
 
 ## Features
 
@@ -33,8 +33,8 @@ This uses Riot's private authentication/social protocols. It was verified on a W
 Clone or download this repository, then run from its folder:
 
 ```powershell
-git clone https://github.com/GodOfCoding1/valorant-friend-notifier.git
-cd valorant-friend-notifier
+git clone https://github.com/GodOfCoding1/riot-client-notifier.git
+cd riot-client-notifier
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -RiotId 'YourFriend#TAG'
 ```
 

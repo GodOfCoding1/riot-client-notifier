@@ -1,4 +1,4 @@
-param([string]$Title = 'Riot Friend Notifier', [string]$Message = 'Test notification: your notifier is ready.')
+param([string]$Title = 'Riot Client Notifier', [string]$Message = 'Test notification: your notifier is ready.')
 $ErrorActionPreference = 'Stop'
 $appId = 'Local.RiotFriendNotifier'
 # Desktop toast notifications need a Start Menu shortcut that carries the

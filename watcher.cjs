@@ -15,7 +15,7 @@ function log(message) {
 }
 function notify(riotId) {
   return new Promise(resolve => execFile(path.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'),
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', file('toast.ps1'), '-Title', 'Valorant friend online', '-Message', riotId + ' is online in Valorant.'],
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', file('toast.ps1'), '-Title', 'Riot Client Notifier', '-Message', riotId + ' is online in VALORANT.'],
     {windowsHide: true, timeout: 15000}, (error, stdout) => {
       if (error) {log('Notification delivery failed; retrying later.'); return resolve(false);}
       try {const result = JSON.parse(stdout.trim()); log('Notification submitted; Windows setting=' + result.setting + '; history=' + result.historyCount); resolve(result.submitted && result.setting === 'Enabled');} catch {resolve(false);}

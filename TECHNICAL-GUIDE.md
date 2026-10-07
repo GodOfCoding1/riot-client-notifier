@@ -1,4 +1,4 @@
-# Riot Friend Notifier: protocol discovery, operation, and migration
+# Riot Client Notifier: protocol discovery, operation, and migration
 
 Written 7 October 2026. This guide describes the implementation installed on this PC, separates live evidence from assumptions, and explains how to study and extend it. Every token shown below is a placeholder. No actual login secrets are included.
 
@@ -300,7 +300,7 @@ ChangeFriend works with Riot closed provided the saved login is valid and the ac
 Stop does not remove the startup shortcut; DisableStartup does not stop the current process. Use both when disabling the application completely. The shortcut is under your account's Startup folder:
 
 ```text
-%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Riot Friend Notifier.lnk
+%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Riot Client Notifier.lnk
 ```
 
 The setup script accepts `-RiotId Name#TAG`, otherwise reuses an existing selection or prompts. Re-running it submits a test notification and reinstalls the watcher. It does not delete `state.json`.

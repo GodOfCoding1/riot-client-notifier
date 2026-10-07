@@ -8,7 +8,8 @@ $installDir = $PSScriptRoot
 $nodeExe = Join-Path $installDir 'runtime\node.exe'
 $watcherScript = Join-Path $installDir 'watcher.cjs'
 $startupDir = [Environment]::GetFolderPath('Startup')
-$startupLink = Join-Path $startupDir 'Riot Friend Notifier.lnk'
+$startupLink = Join-Path $startupDir 'Riot Client Notifier.lnk'
+$legacyStartupLink = Join-Path $startupDir 'Riot Friend Notifier.lnk'
 function Get-WatcherProcess {
     @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object {
         $_.ExecutablePath -eq $nodeExe -and $_.CommandLine -like ('*"' + $watcherScript + '"*')
@@ -33,11 +34,11 @@ switch ($Action) {
     'Status' {
         $running = @(Get-WatcherProcess).Count -gt 0
         Write-Output "Running: $running"
-        Write-Output "Sign-in startup enabled: $(Test-Path -LiteralPath $startupLink)"
+        Write-Output "Sign-in startup enabled: $((Test-Path -LiteralPath $startupLink) -or (Test-Path -LiteralPath $legacyStartupLink))"
         $statusPath = Join-Path $installDir 'status.json'
         if (Test-Path -LiteralPath $statusPath) { Get-Content -LiteralPath $statusPath }
     }
-    'Test' { & (Join-Path $installDir 'toast.ps1') -Title 'Riot Friend Notifier' -Message 'Test notification: your notifier is ready.' }
+    'Test' { & (Join-Path $installDir 'toast.ps1') -Title 'Riot Client Notifier' -Message 'Test notification: your notifier is ready.' }
     'ChangeFriend' {
         if (-not $RiotId) { $RiotId = Read-Host 'Friend Riot ID (Name#TAG)' }
         & $nodeExe (Join-Path $installDir 'resolve-friend.cjs') $RiotId
@@ -45,18 +46,20 @@ switch ($Action) {
         Write-Output 'The watcher will pick up the change on its next poll.'
     }
     'EnableStartup' {
+        Remove-Item -LiteralPath $legacyStartupLink -Force -ErrorAction SilentlyContinue
         $shell = New-Object -ComObject WScript.Shell
         $shortcut = $shell.CreateShortcut($startupLink)
         $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
         $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + (Join-Path $installDir 'manage.ps1') + '" -Action Start'
         $shortcut.WorkingDirectory = $installDir
         $shortcut.WindowStyle = 7
-        $shortcut.Description = 'Watch the selected Riot friend and show Windows notifications.'
+        $shortcut.Description = 'Riot Client Notifier: alert when the selected friend comes online in VALORANT.'
         $shortcut.Save()
         Write-Output 'Automatic startup enabled for your Windows account.'
     }
     'DisableStartup' {
         Remove-Item -LiteralPath $startupLink -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $legacyStartupLink -Force -ErrorAction SilentlyContinue
         Write-Output 'Automatic startup removed. Use Stop to stop the current watcher.'
     }
 }

@@ -23,7 +23,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'vendor\package\LICENSE.md'),(Jo
 # Register this local desktop notification sender for the current user only.
 $appKey = 'HKCU:\Software\Classes\AppUserModelId\Local.RiotFriendNotifier'
 New-Item -Path $appKey -Force | Out-Null
-New-ItemProperty -Path $appKey -Name DisplayName -Value 'Riot Friend Notifier' -PropertyType String -Force | Out-Null
+New-ItemProperty -Path $appKey -Name DisplayName -Value 'Riot Client Notifier' -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $appKey -Name ShowInSettings -Value 1 -PropertyType DWord -Force | Out-Null
 foreach ($action in @('Start','Stop','Status','Test','ChangeFriend','DisableStartup','EnableStartup')) {
     $commandText = '@echo off' + "`r`n" + 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0manage.ps1" -Action ' + $action + "`r`n" + 'pause' + "`r`n"
