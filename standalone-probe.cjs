@@ -3,7 +3,8 @@ const {bootstrap}=require('./standalone-auth.cjs');
 const {Chat,targetView,child}=require('./xmpp.cjs');
 const path=require('node:path');
 const configPath=path.join(process.env.LOCALAPPDATA,'RiotFriendNotifier/config.json');
-const target=process.argv[2]||(fs.existsSync(configPath)?JSON.parse(fs.readFileSync(configPath,'utf8')).puuid:null);
+const config=fs.existsSync(configPath)?JSON.parse(fs.readFileSync(configPath,'utf8')):null;
+const target=process.argv[2]||config?.friends?.[0]?.puuid||config?.puuid;
 if(!target){console.log('Usage: node standalone-probe.cjs <friend-puuid>');process.exit(1);}
 const chat=new Chat();
 function say(message){console.log(new Date().toISOString()+' '+message);}

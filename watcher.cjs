@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {execFile} = require('node:child_process');
 const {snapshot} = require('./riot-api.cjs');
-const {classify, Tracker} = require('./presence.cjs');
+const {Monitor} = require('./monitor.cjs');
 const {StandalonePresence} = require('./standalone-presence.cjs');
 const root = __dirname;
 const file = name => path.join(root, name);
@@ -29,35 +29,20 @@ instance.on('error', () => process.exit(0));
 instance.listen(pipeName, () => run().catch(() => {log('Watcher stopped unexpectedly.'); process.exit(1);}));
 async function run() {
   fs.writeFileSync(file('watcher.pid'), String(process.pid));
-  let config, tracker, configKey, lastHealth, generation;
+  const monitor = new Monitor(read('state.json', {}));
+  let lastHealth;
   const standalone=new StandalonePresence(root,log);
   log('Watcher started.');
   for (;;) {
     if (fs.existsSync(file('stop.flag'))) break;
-    const nextConfig = read('config.json', null);
-    if (!nextConfig?.puuid) throw new Error('missing configuration');
-    if (configKey !== nextConfig.puuid) {
-      config = nextConfig; configKey = config.puuid;
-      const saved = read('state.json', {});
-      tracker = new Tracker(saved.puuid === config.puuid ? saved : {});
-      generation = null;
-    } else config = nextConfig;
-    let value = 'unknown', currentGeneration;
-    try {
-      const result = config.mode === 'loopback' ? await snapshot(config.puuid) : await standalone.snapshot(config.puuid);
-      currentGeneration = result.generation;
-      value = classify(result.presences);
-      // A new connection must have repeated healthy samples before committing absence.
-      if (generation && generation !== currentGeneration) tracker.observe('unknown', Date.now());
-      generation = currentGeneration;
-    } catch {value = 'unknown';}
-    if (value !== lastHealth) {log('Observed status: ' + value); lastHealth = value;}
-    const now = Date.now();
-    const alert = tracker.observe(value, now);
-    if (alert && await notify(config.riotId)) tracker.markNotified(Date.now());
-    write('state.json', {puuid: config.puuid, ...tracker.serialize()});
-    write('status.json', {pid: process.pid, updatedAt: new Date().toISOString(), observed: value, stable: tracker.stable, friend: config.riotId, pollSeconds: 12,
-      source:config.mode==='loopback'?'riot-loopback':'independent-xmpp',chatConnected:config.mode==='loopback'?value!=='unknown':standalone.chat?.connected===true,
+    const config = read('config.json', null);
+    monitor.configure(config);
+    const statuses = await monitor.poll(puuids => config.mode === 'loopback' ? snapshot(puuids) : standalone.snapshot(puuids), notify);
+    const health = statuses.map(f => f.observed).join(', ');
+    if (health !== lastHealth) {log('Observed friend statuses: ' + health); lastHealth = health;}
+    write('state.json', monitor.serialize());
+    write('status.json', {pid: process.pid, updatedAt: new Date().toISOString(), friends: statuses, pollSeconds: 12,
+      source:config.mode==='loopback'?'riot-loopback':'independent-xmpp',chatConnected:config.mode==='loopback'?statuses.every(f=>f.observed!=='unknown'):standalone.chat?.connected===true,
       tokenExpiry:standalone.authExpiry?new Date(standalone.authExpiry).toISOString():undefined});
     await new Promise(resolve => setTimeout(resolve, 12000));
   }

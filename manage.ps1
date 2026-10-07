@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Start','Stop','Status','Test','ChangeFriend','EnableStartup','DisableStartup')]
+    [ValidateSet('Start','Stop','Status','Test','ChangeFriend','ChangeFriends','AddFriend','RemoveFriend','EnableStartup','DisableStartup')]
     [string]$Action = 'Status',
     [string]$RiotId
 )
@@ -39,10 +39,13 @@ switch ($Action) {
         if (Test-Path -LiteralPath $statusPath) { Get-Content -LiteralPath $statusPath }
     }
     'Test' { & (Join-Path $installDir 'toast.ps1') -Title 'Riot Client Notifier' -Message 'Test notification: your notifier is ready.' }
-    'ChangeFriend' {
-        if (-not $RiotId) { $RiotId = Read-Host 'Friend Riot ID (Name#TAG)' }
-        & $nodeExe (Join-Path $installDir 'resolve-friend.cjs') $RiotId
-        if ($LASTEXITCODE -ne 0) { throw 'Could not resolve friend; existing configuration was preserved.' }
+    { $_ -in 'ChangeFriend','ChangeFriends','AddFriend','RemoveFriend' } {
+        if (-not $RiotId) { $RiotId = Read-Host 'Friend Riot IDs (Name#TAG,Another#TAG)' }
+        $operation = 'replace'
+        if ($Action -eq 'AddFriend') { $operation = 'add' }
+        if ($Action -eq 'RemoveFriend') { $operation = 'remove' }
+        & $nodeExe (Join-Path $installDir 'resolve-friend.cjs') "--$operation" $RiotId
+        if ($LASTEXITCODE -ne 0) { throw 'Could not update friends; existing configuration was preserved.' }
         Write-Output 'The watcher will pick up the change on its next poll.'
     }
     'EnableStartup' {
@@ -53,7 +56,7 @@ switch ($Action) {
         $shortcut.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + (Join-Path $installDir 'manage.ps1') + '" -Action Start'
         $shortcut.WorkingDirectory = $installDir
         $shortcut.WindowStyle = 7
-        $shortcut.Description = 'Riot Client Notifier: alert when the selected friend comes online in VALORANT.'
+        $shortcut.Description = 'Riot Client Notifier: alert when selected friends come online in VALORANT.'
         $shortcut.Save()
         Write-Output 'Automatic startup enabled for your Windows account.'
     }

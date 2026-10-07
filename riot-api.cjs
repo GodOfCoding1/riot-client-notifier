@@ -35,7 +35,8 @@ async function snapshot(puuid, io = {readLockfile, get}) {
   const after = await io.get(lock, '/chat/v1/session');
   if (after.state !== 'connected' || after.loaded !== true || before.puuid !== after.puuid || io.readLockfile().generation !== lock.generation) throw new Error('chat unavailable');
   if (!Array.isArray(data.presences)) throw new Error('invalid local response');
-  return {presences: data.presences.filter(p => p.puuid === puuid), generation: lock.generation};
+  const targets = new Set(Array.isArray(puuid) ? puuid : [puuid]);
+  return {presences: data.presences.filter(p => targets.has(p.puuid)), generation: lock.generation};
 }
 async function resolveFriend(riotId) {
   const split = riotId.lastIndexOf('#');

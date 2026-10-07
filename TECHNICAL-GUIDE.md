@@ -196,7 +196,9 @@ An observed roster item for the selected friend had this structure:
 </item>
 ```
 
-`standalone-friends.cjs` matches `id.name` and `id.tagline` case-insensitively, requires `subscription="both"`, and requires one unique match. It returns the PUUID and canonical display ID. `resolve-friend.cjs` saves those in `config.json` atomically. Future presence monitoring matches the PUUID, so a name change does not stop monitoring.
+`standalone-friends.cjs` resolves all requested IDs from one roster. It matches `id.name` and `id.tagline` case-insensitively, requires `subscription="both"`, and requires one unique match per ID. `resolve-friend.cjs` atomically saves a `friends` array containing each PUUID and canonical display ID. Failed resolution of any ID preserves the existing configuration; duplicate PUUIDs are collapsed. Future presence monitoring matches the PUUID, so a name change does not stop monitoring.
+
+`monitor.cjs` accepts both this array and the legacy single-friend configuration. It maintains one tracker per selected PUUID, migrates legacy saved state, and persists tracker state in `state.json` under `friends[puuid]`. Selection changes keep existing trackers for retained friends and discard removed friends. Each tracker has its own debounce, cooldown, and pending notification retry. `status.json` contains a `friends` array with each friend's observed and stable state.
 
 Publishing `<presence/>` subscribes to incoming friend updates and also advertises your own normal chat availability. Your account can therefore appear online in Riot chat while the watcher runs. The watcher does not claim to be playing Valorant and sends no chat messages.
 
@@ -213,7 +215,7 @@ A simplified incoming stanza is:
 </presence>
 ```
 
-The part after `/` is a **resource**, representing a distinct chat session. A friend can have launcher/mobile and Valorant resources simultaneously. `StandalonePresence.resources` stores rows by the full `from` address and replaces those rows when that resource sends an update. `type="unavailable"` removes only the resource that left, not every session for that friend.
+The part after `/` is a **resource**, representing a distinct chat session. A friend can have launcher/mobile and Valorant resources simultaneously. One `StandalonePresence` connection caches incoming presence for friends by the full `from` address, tags rows with their PUUID, and filters snapshots to the selected PUUIDs. Changing the selection does not reconnect or lose initial presence. `type="unavailable"` removes only the resource that left, not every session for that friend. The loopback mode also reads all selected friends in a single healthy snapshot per poll.
 
 `targetView()` filters the selected PUUID and normalizes `keystone` to `riot_client`. `presence.cjs` considers Valorant states `chat`, `away`, `dnd`, `mobile`, and `online` active. In particular, `dnd` is not offline; it was the live in-match status we observed. An active Valorant row wins over other products. Unknown Valorant status strings produce `unknown`; otherwise the result is `other`, meaning **not currently in Valorant**, not necessarily entirely offline.
 
@@ -275,7 +277,9 @@ Double-click the corresponding `.cmd` file in the installation folder:
 | --- | --- |
 | Start | Start.cmd |
 | Stop immediately | Stop.cmd |
-| Change selected friend interactively | ChangeFriend.cmd |
+| Replace monitored friends interactively | ChangeFriends.cmd (ChangeFriend.cmd remains supported) |
+| Add friends to the selection | AddFriend.cmd |
+| Remove friends from the selection | RemoveFriend.cmd |
 | Check process, startup, and last status | Status.cmd |
 | Test Windows notification delivery | Test.cmd |
 | Remove future sign-in startup | DisableStartup.cmd |
@@ -291,11 +295,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action Start
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action Stop
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action Status
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action Test
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action ChangeFriend -RiotId 'DifferentName#TAG'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action ChangeFriends -RiotId 'FriendOne#TAG,FriendTwo#TAG'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action AddFriend -RiotId 'DifferentName#TAG'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action RemoveFriend -RiotId 'FriendOne#TAG'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $manager -Action DisableStartup
 ```
 
-ChangeFriend works with Riot closed provided the saved login is valid and the account can retrieve its roster. A failed resolution preserves the old config. Do not change only the display label in `config.json`: the PUUID is what actually selects the friend.
+ChangeFriends, ChangeFriend, and AddFriend work with Riot closed provided the saved login is valid and the account can retrieve its roster. Pass comma-separated IDs for multiple friends. A failed resolution preserves the old config. RemoveFriend uses stored IDs without a connection and rejects removal of the last friend; use Stop to pause monitoring. Do not change only a display label in `config.json`: the PUUID is what actually selects the friend.
 
 Stop does not remove the startup shortcut; DisableStartup does not stop the current process. Use both when disabling the application completely. The shortcut is under your account's Startup folder:
 
@@ -303,7 +309,7 @@ Stop does not remove the startup shortcut; DisableStartup does not stop the curr
 %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Riot Client Notifier.lnk
 ```
 
-The setup script accepts `-RiotId Name#TAG`, otherwise reuses an existing selection or prompts. Re-running it submits a test notification and reinstalls the watcher. It does not delete `state.json`.
+The setup script accepts `-RiotId 'Name#TAG,Another#TAG'` (one ID also works), otherwise reuses all existing selections or prompts. Re-running it submits a test notification and reinstalls the watcher. It does not delete `state.json`.
 
 ## 7. How to know it is really working
 
@@ -323,8 +329,7 @@ $ageSeconds = ([DateTimeOffset]::UtcNow - [DateTimeOffset]::Parse($status.update
     AgeSeconds = [math]::Round($ageSeconds)
     Source = $status.source
     ChatConnected = $status.chatConnected
-    Observed = $status.observed
-    Stable = $status.stable
+    Friends = $status.friends
 }
 ```
 
@@ -332,7 +337,7 @@ An age over roughly 90 seconds merits checking Status and the logs; it is a trou
 
 ### B. Healthy presence
 
-`observed: valorant` means the friend is currently represented by an active Valorant row. `observed: other` is a healthy non-Valorant result. `observed: unknown` means the monitor cannot currently determine the answer; short initial loading/renewal periods are expected. If it stays unknown, inspect:
+Each entry in `status.friends` has its own observation. `observed: valorant` means that friend is currently represented by an active Valorant row. `observed: other` is a healthy non-Valorant result. `observed: unknown` means the monitor cannot currently determine the answer; short initial loading/renewal periods are expected. If it stays unknown, inspect:
 
 ```powershell
 Get-Content -LiteralPath "$env:LOCALAPPDATA\RiotFriendNotifier\watcher.log" -Tail 30
@@ -354,9 +359,10 @@ The end-to-end live test is: obtain a healthy non-Valorant state, have the selec
 $notifierDir = Join-Path $env:LOCALAPPDATA 'RiotFriendNotifier'
 & (Join-Path $notifierDir 'runtime\node.exe') (Join-Path $notifierDir 'tests.cjs')
 & (Join-Path $notifierDir 'runtime\node.exe') (Join-Path $notifierDir 'xmpp-tests.cjs')
+& (Join-Path $notifierDir 'runtime\node.exe') (Join-Path $notifierDir 'multi-friend-tests.cjs')
 ```
 
-Together these ran 29 checks. Most are simulated state/protocol/health failures; one exercises Windows DPAPI with synthetic data. They do not manufacture proof of a live friend entering Valorant.
+Together these run 40 checks. Most simulate state/protocol/health cases; one exercises Windows DPAPI with synthetic data, and another runs Windows management commands in a temporary installation. The multi-friend suite checks simultaneous independent alerts, separate departure/re-entry and retry behavior, restart deduplication, outage handling, shared resource isolation, roster resolution, atomic configuration changes, and legacy migration. These do not prove live friend transitions.
 
 As last checked for this documentation, the installed process was running, sign-in startup was enabled, chat was connected through independent XMPP, and the target was in the healthy `other` state. That is a point-in-time observation; use Status for current information.
 

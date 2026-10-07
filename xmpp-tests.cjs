@@ -27,7 +27,7 @@ async function checks(){
   const s=new StandalonePresence(__dirname);s.puuid='target';s.chat={connected:true,close(){this.connected=false;}};s.authExpiry=Date.now()+3600000;s.lastReceive=Date.now();s.ready=false;
   await assert.rejects(s.snapshot('target'));passed++;console.log('PASS initial connection without roster is unknown');
   s.ready=true;s.readyAt=Date.now();await assert.rejects(s.snapshot('target'));passed++;console.log('PASS initial roster grace period is unknown');
-  s.readyAt=Date.now()-13000;s.resources.set('rc1',[{product:'valorant',state:'dnd'}]);assert.equal(classify((await s.snapshot('target')).presences),'valorant');passed++;console.log('PASS established healthy stream reports target presence');
+  s.readyAt=Date.now()-13000;s.resources.set('rc1',[{puuid:'target',product:'valorant',state:'dnd'}]);assert.equal(classify((await s.snapshot('target')).presences),'valorant');passed++;console.log('PASS established healthy stream reports target presence');
   s.chat.connected=false;s.nextAttempt=Date.now()+30000;await assert.rejects(s.snapshot('target'));passed++;console.log('PASS disconnected stream is unknown, never stale online/offline');
   const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'riot-notifier-test-'));

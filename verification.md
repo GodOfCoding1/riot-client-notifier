@@ -1,3 +1,10 @@
+# Multi-friend update — 2026-10-07
+
+* Passed 40 checks: 18 transition/API tests, 11 XMPP/health/encryption tests, and 11 multi-friend tests.
+* Multi-friend tests cover simultaneous alerts, separate departure/re-entry and notification retry behavior, persisted deduplication, legacy migration, selection changes, outages/reconnects, shared XMPP resource isolation, loopback filtering, accepted roster resolution, and atomic configuration updates.
+* The Windows management integration test runs `RemoveFriend` against a temporary installation with synthetic friends, checks comma-separated removal, and verifies that removing the final friend fails without changing configuration.
+* PowerShell installer and management scripts passed syntax parsing. Live Riot friend transitions and the full installer were not exercised for this update. Earlier live evidence below predates these changes.
+
 > Personal friend identifiers and local machine paths have been replaced with illustrative placeholders for publication. The recorded live-versus-simulated distinctions are preserved.
 
 # Current verification — independent Riot login, 7 October 2026 (India time)

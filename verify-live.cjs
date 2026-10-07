@@ -3,7 +3,8 @@ const {snapshot} = require('./riot-api.cjs');
 const {classify} = require('./presence.cjs');
 const path = require('node:path');
 const configPath = path.join(process.env.LOCALAPPDATA,'RiotFriendNotifier/config.json');
-const puuid = process.argv[2] || (fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath,'utf8')).puuid : null);
+const config = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath,'utf8')) : null;
+const puuid = process.argv[2] || config?.friends?.[0]?.puuid || config?.puuid;
 if(!puuid){console.log('Usage: node verify-live.cjs <friend-puuid> (requires running Riot Client)');process.exit(1);}
 function decode(s) {try {return JSON.parse(Buffer.from(s,'base64').toString('utf8'));}catch{return {};}}
 snapshot(puuid).then(result => {
