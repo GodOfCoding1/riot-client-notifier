@@ -1,0 +1,11 @@
+{
+  "name": "valorant-friend-notifier",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows desktop alerts when Riot friends come online in VALORANT, using standalone XMPP presence and saved-login renewal.",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node tests.cjs && node xmpp-tests.cjs" },
+  "repository": { "type": "git", "url": "https://github.com/GodOfCoding1/valorant-friend-notifier.git" },
+  "keywords": ["valorant", "riot-games", "friend-notifier", "windows-notifications", "xmpp", "presence", "oauth2", "powershell"]
+}
