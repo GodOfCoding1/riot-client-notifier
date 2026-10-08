@@ -9,6 +9,7 @@ Looking for a Riot Client friend notifier, a VALORANT online alert, or a Riot Ga
 ## Features
 
 - Monitor multiple friends with separate Windows notifications, debounce, and cooldowns.
+- Gmail email on the same VALORANT alert. A failed send retries on its own, without repeating the Windows toast.
 - Standalone Riot XMPP presence connection; no running Riot Client required after login setup.
 - Automatic token renewal from your existing saved Riot login.
 - Stable PUUID tracking that survives Riot ID changes.
@@ -79,7 +80,8 @@ flowchart LR
     C --> D[TLS XMPP connection]
     D --> E[Friend roster and live presence]
     E --> F[PUUID tracking and debounce]
-    F --> G[Windows desktop notification]
+    F --> G[Windows toast]
+    F --> H[Gmail SMTP]
 ```
 
 Presence events update a local cache shared by all friends over one XMPP connection; the watcher evaluates it every 12 seconds. Each friend has independent debounce, cooldown, and saved notification state. Entering VALORANT requires two healthy observations at least 12 seconds apart. Leaving requires 36 seconds of healthy non-VALORANT presence; a two-minute cooldown further suppresses repeats. A first confirmed already-online observation can notify once, and persisted state prevents repeat alerts on reconnects.
@@ -95,10 +97,11 @@ The watcher publishes normal Riot chat presence to subscribe to friend updates, 
 | `%LOCALAPPDATA%\Riot Games\Riot Client\Data\RiotGamesPrivateSettings.yaml` | Existing Riot saved authorization, read without modification |
 | `%LOCALAPPDATA%\RiotFriendNotifier\session.dpapi` | Refreshed watcher session encrypted for the Windows user |
 | `config.json` | `friends` array of Riot IDs/PUUIDs and mode; no login secrets |
+| `.env` | Gmail SMTP app password, sender, and recipient. Git ignores this file. |
 | `state.json` | Notification deduplication state keyed by each friend's PUUID |
 | `status.json` / `watcher.log` | Sanitized health and delivery diagnostics |
 
-Passwords and browser cookies are not requested. Remote HTTPS/TLS verifies certificates. The optional older loopback implementation confines its certificate exception to `127.0.0.1`.
+Riot passwords and browser cookies are not requested. The Gmail app password stays in `.env`. Remote HTTPS/TLS verifies certificates. The optional older loopback implementation confines its certificate exception to `127.0.0.1`.
 
 Never commit saved Riot settings, decrypted tokens, encrypted session caches, cookies, or logs. See [SECURITY.md](SECURITY.md) for credential handling and report guidance.
 
@@ -106,19 +109,20 @@ Never commit saved Riot settings, decrypted tokens, encrypted session caches, co
 
 Status should show `Running: True`, `source: independent-xmpp`, `chatConnected: true`, and a timestamp that advances. Its `friends` array reports each friend's ID, PUUID, `observed`, and `stable` status. `observed: other` means a healthy non-VALORANT result; persistent `unknown` means activity cannot currently be determined. Short loading/renewal periods are expected.
 
-`Test.cmd` tests Windows notification submission, not Riot connectivity or an actual friend transition. Check notification settings and Do Not Disturb if a banner does not appear.
+`Test.cmd` submits a Windows test notification and, when `.env` is present, a test email. It does not check Riot connectivity or an actual friend transition. Check notification settings and Do Not Disturb if a banner does not appear.
 
 ```powershell
 node .\tests.cjs
 node .\xmpp-tests.cjs
 node .\multi-friend-tests.cjs
+node .\notify-tests.cjs
 ```
 
-The project has 40 transition, protocol, health, encryption, and multi-friend checks, including Windows management command integration. Read the [verification record](verification.md) for the distinction between live evidence and simulated checks. Networking recovery is automatic; unexpected Node process exits currently require Start or a new sign-in.
+The project has 48 transition, protocol, health, encryption, multi-friend, and email-delivery checks, including Windows management command integration. Read the [verification record](verification.md) for the distinction between live evidence and simulated checks. Networking recovery is automatic; unexpected Node process exits currently require Start or a new sign-in.
 
 ## Raspberry Pi, Linux, and cloud servers
 
-The direct-chat design is suitable for a future always-on server, but **this installation is Windows-specific**. Linux migration requires replacing the saved-login-file provider, DPAPI storage, Windows notifications, named-pipe lock, and startup management. Copying the folder or encrypted cache is not sufficient.
+The direct-chat design is suitable for a future always-on server, but **this installation is Windows-specific**. Gmail delivery in `notify/email.cjs` is plain Node SMTP and becomes the gating alert where Windows toasts are unavailable. Linux migration still requires replacing the saved-login-file provider, DPAPI storage, named-pipe lock, and startup management. Copying the folder or encrypted cache is not sufficient.
 
 A Linux Raspberry Pi or VPS is a practical target. A conventional Arduino microcontroller would need a separate firmware implementation. Receiving alerts while the Windows PC is off also requires a phone-accessible notification channel. See the [migration section](TECHNICAL-GUIDE.md#8-moving-to-an-always-on-device-or-server).
 

@@ -362,7 +362,7 @@ $notifierDir = Join-Path $env:LOCALAPPDATA 'RiotFriendNotifier'
 & (Join-Path $notifierDir 'runtime\node.exe') (Join-Path $notifierDir 'multi-friend-tests.cjs')
 ```
 
-Together these run 40 checks. Most simulate state/protocol/health cases; one exercises Windows DPAPI with synthetic data, and another runs Windows management commands in a temporary installation. The multi-friend suite checks simultaneous independent alerts, separate departure/re-entry and retry behavior, restart deduplication, outage handling, shared resource isolation, roster resolution, atomic configuration changes, and legacy migration. These do not prove live friend transitions.
+Together these run 48 checks. Most simulate state/protocol/health cases; one exercises Windows DPAPI with synthetic data, and another runs Windows management commands in a temporary installation. The multi-friend suite checks simultaneous independent alerts, separate departure/re-entry and retry behavior, restart deduplication, outage handling, shared resource isolation, roster resolution, atomic configuration changes, and legacy migration. The notification suite checks Gmail message formatting, toast-success with email retry, and Linux email gating. These do not prove live friend transitions.
 
 As last checked for this documentation, the installed process was running, sign-in startup was enabled, chat was connected through independent XMPP, and the target was in the healthy `other` state. That is a point-in-time observation; use Status for current information.
 
@@ -383,7 +383,7 @@ Some Arduino-branded devices have Linux-capable hardware, so the exact model mat
 | Native login source | `saved-login.cjs` reads Windows LOCALAPPDATA and Riot's private YAML; **`Credentials.get()` reads this on every call, even with a valid cache** | Introduce a credential-source interface and explicitly provision renewable authorization on the server |
 | Session protection | Windows PowerShell + CurrentUser DPAPI | Use the server's secret store or encrypted state with a separately provisioned key; persist rotated tokens atomically |
 | Runtime | Bundled Windows `node.exe` | Install compatible Linux/ARM or Linux/x64 Node with the required modern APIs |
-| Notifications | PowerShell + Windows WinRT + HKCU sender registration | Add a server notification adapter, such as phone push or Telegram, and its service credentials |
+| Notifications | Windows toast in `notify/windows.cjs`; Gmail SMTP in `notify/email.cjs` | On Linux, do not load the Windows adapter. The same dispatcher treats configured email as the gating channel. SMTP settings stay in `.env`. |
 | Single-instance lock | Windows named-pipe path | Use a Linux-compatible lock/socket or rely on one supervised service instance |
 | Startup/control | `.cmd`, `manage.ps1`, user Startup shortcut | Use a boot service such as systemd with restart-on-failure |
 | State and paths | Relative to installation directory | Separate immutable code from writable state and secrets |
@@ -396,7 +396,7 @@ Copying the source folder or the existing DPAPI file is **not sufficient**. Even
 1. Refactor authentication into `getToken()/refresh()` backed by a server credential store rather than Riot's Windows YAML. Keep private authorization out of source control and console output.
 2. Provision an authorized renewable session over a secure transfer/login path. Do not copy the entire Riot private-settings file or paste tokens into shell history. Confirm independently that renewal works from the new host. Windows DPAPI ciphertext cannot serve as the Linux credential source.
 3. Keep the existing XMPP framing, roster resolution, resource cache, classification, and debounce logic where possible. Install the vendored parser and a compatible runtime.
-4. Replace Windows toast delivery with the chosen always-available notification channel. A powered-off Windows PC cannot display a desktop toast; phone delivery or queued alerts is required.
+4. Keep `notify/email.cjs` as the server alert channel and do not load Windows toast delivery. A powered-off Windows PC cannot display a desktop toast.
 5. Run one credential writer/service instance. Multiple hosts sharing a rotating refresh session can introduce races; all combinations of concurrent Riot launcher and multiple watchers have not been verified.
 6. Configure a non-root service account, writable state directory, boot startup, process crash restart, and sanitized health logs. Keep deduplication state across restarts. A service supervisor must not treat network unknown as friend offline.
 7. Ensure outbound DNS, HTTPS/TCP 443 to the authentication/configuration services, and TLS/TCP 5223 to the configured chat host. No public inbound listener or router port forwarding is needed for Riot monitoring itself. Use correct system time and a valid CA trust store.
@@ -418,6 +418,7 @@ Start with `presence.cjs`, then follow the dependency chain below. Each source f
 | standalone-friends.cjs | Roster request and Name#TAG to PUUID resolution |
 | standalone-presence.cjs | Live resource cache, load grace, connection health, renewal/reconnect |
 | watcher.cjs | Single instance, configuration reload, notification delivery, state/status/log files |
+| notify/dispatch.cjs | Windows toast and Gmail channels, which channel gates dedupe, and email retry |
 | manage.ps1 / install.ps1 | Exact process selection, per-user startup, installation layout |
 | login-probe.cjs / standalone-probe.cjs | Exploratory metadata-only login and direct connection experiments |
 | audit-secrets.cjs | Check known installed-session tokens against diagnostic files without printing them |

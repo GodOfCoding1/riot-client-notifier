@@ -38,7 +38,12 @@ switch ($Action) {
         $statusPath = Join-Path $installDir 'status.json'
         if (Test-Path -LiteralPath $statusPath) { Get-Content -LiteralPath $statusPath }
     }
-    'Test' { & (Join-Path $installDir 'toast.ps1') -Title 'Riot Client Notifier' -Message 'Test notification: your notifier is ready.' }
+    'Test' {
+        & (Join-Path $installDir 'toast.ps1') -Title 'Riot Client Notifier' -Message 'Test notification: your notifier is ready.'
+        & $nodeExe (Join-Path $installDir 'notify\dispatch.cjs')
+        if ($LASTEXITCODE -eq 2) { Write-Output 'Email is not configured.' }
+        elseif ($LASTEXITCODE -ne 0) { throw 'Test email failed.' }
+    }
     { $_ -in 'ChangeFriend','ChangeFriends','AddFriend','RemoveFriend' } {
         if (-not $RiotId) { $RiotId = Read-Host 'Friend Riot IDs (Name#TAG,Another#TAG)' }
         $operation = 'replace'

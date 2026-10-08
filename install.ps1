@@ -18,9 +18,16 @@ $existingManage = Join-Path $installDir 'manage.ps1'
 if (Test-Path -LiteralPath $existingManage) { & $existingManage -Action Stop }
 $runtimeSource = (Get-Command node.exe -ErrorAction Stop).Source
 Copy-Item -LiteralPath $runtimeSource -Destination (Join-Path $runtimeDir 'node.exe') -Force
-foreach ($name in @('riot-api.cjs','presence.cjs','monitor.cjs','multi-friend-tests.cjs','watcher.cjs','resolve-friend.cjs','toast.ps1','manage.ps1','tests.cjs','README.md','TECHNICAL-GUIDE.md','standalone-auth.cjs','standalone-presence.cjs','standalone-friends.cjs','saved-login.cjs','secure-session.cjs','protect-session.ps1','xmpp.cjs','xmpp-tests.cjs','verification.md')) {
+foreach ($name in @('riot-api.cjs','presence.cjs','monitor.cjs','multi-friend-tests.cjs','watcher.cjs','resolve-friend.cjs','toast.ps1','manage.ps1','tests.cjs','notify-tests.cjs','README.md','TECHNICAL-GUIDE.md','standalone-auth.cjs','standalone-presence.cjs','standalone-friends.cjs','saved-login.cjs','secure-session.cjs','protect-session.ps1','xmpp.cjs','xmpp-tests.cjs','verification.md','.env.example')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $installDir $name) -Force
 }
+$notifyDir = Join-Path $installDir 'notify'
+New-Item -ItemType Directory -Path $notifyDir -Force | Out-Null
+foreach ($name in @('email.cjs','windows.cjs','dispatch.cjs')) {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "notify\$name") -Destination (Join-Path $notifyDir $name) -Force
+}
+$envFile = Join-Path $PSScriptRoot '.env'
+if (Test-Path -LiteralPath $envFile) { Copy-Item -LiteralPath $envFile -Destination (Join-Path $installDir '.env') -Force }
 $vendorDir = Join-Path $installDir 'vendor\package'
 New-Item -ItemType Directory -Path (Join-Path $vendorDir 'lib') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'vendor\package\lib\sax.js') -Destination (Join-Path $vendorDir 'lib\sax.js') -Force
@@ -42,6 +49,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'XMPP tests failed.' }
 & (Join-Path $runtimeDir 'node.exe') (Join-Path $installDir 'multi-friend-tests.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Multi-friend tests failed.' }
+& (Join-Path $runtimeDir 'node.exe') (Join-Path $installDir 'notify-tests.cjs')
+if ($LASTEXITCODE -ne 0) { throw 'Notification tests failed.' }
 & (Join-Path $installDir 'manage.ps1') -Action Test
 & (Join-Path $installDir 'manage.ps1') -Action EnableStartup
 & (Join-Path $installDir 'manage.ps1') -Action Start

@@ -24,7 +24,7 @@ class Monitor {
     // Removed friends must not retain stale state if selected again later.
     this.saved = {};
   }
-  async poll(snapshot, notify, now = Date.now) {
+  async poll(snapshot, notify, now = Date.now, delivery = null) {
     let result;
     try {result = await snapshot(this.friends.map(f => f.puuid));} catch {}
     const statuses = [];
@@ -32,11 +32,22 @@ class Monitor {
       const entry = this.trackers.get(friend.puuid);
       const rows = result?.presences?.filter(p => p.puuid === friend.puuid);
       const value = rows ? classify(rows) : 'unknown';
-      if (entry.generation && entry.generation !== result?.generation) entry.tracker.observe('unknown', now());
+      const time = now();
+      if (entry.generation && entry.generation !== result?.generation) entry.tracker.observe('unknown', time);
       if (result) entry.generation = result.generation;
-      if (entry.tracker.observe(value, now())) {
+      if (entry.tracker.observe(value, time)) {
+        if (delivery?.email) entry.tracker.armEmail();
         // A failed delivery for one friend must not block the remaining friends.
-        try {if (await notify(friend.riotId)) entry.tracker.markNotified(now());} catch {}
+        try {if (await notify(friend.riotId)) entry.tracker.markNotified(time);} catch {}
+      }
+      if (delivery?.email && entry.tracker.pendingEmail && time >= entry.tracker.emailNextAt) {
+        let sent = false;
+        try {sent = await delivery.email(friend.riotId);} catch {}
+        const nextAt = entry.tracker.noteEmail(!!sent, time);
+        if (sent) {
+          if (delivery.onEmailSent) delivery.onEmailSent(friend.riotId);
+          if (delivery.emailGates) entry.tracker.markNotified(time);
+        } else if (delivery.onEmailFailed) delivery.onEmailFailed(friend.riotId, nextAt);
       }
       statuses.push({...friend, observed: value, stable: entry.tracker.stable});
     }
