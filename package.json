@@ -2,10 +2,41 @@
   "name": "riot-client-notifier",
   "version": "0.1.0",
   "private": true,
-  "description": "A Riot Client friend notifier for Windows with VALORANT online alerts, Riot XMPP presence monitoring, and saved-login renewal.",
+  "description": "Riot friend presence monitoring with Windows desktop and Linux cloud email profiles.",
   "license": "MIT",
-  "engines": { "node": ">=22" },
-  "scripts": { "test": "node tests.cjs && node xmpp-tests.cjs && node multi-friend-tests.cjs && node notify-tests.cjs" },
-  "repository": { "type": "git", "url": "https://github.com/GodOfCoding1/riot-client-notifier.git" },
-  "keywords": ["riot-client", "riot-games", "riot-client-notifier", "riot-friend-notifier", "valorant", "league-of-legends", "lol", "teamfight-tactics", "tft", "legends-of-runeterra", "lor", "wild-rift", "2xko", "friend-notifier", "windows-notifications", "xmpp", "presence", "oauth2", "powershell"]
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node tests.cjs && node xmpp-tests.cjs && node multi-friend-tests.cjs && node notify-tests.cjs && node cloud-tests.cjs && node health-tests.cjs",
+    "start": "node watcher.cjs",
+    "friends": "node resolve-friend.cjs",
+    "export:cloud": "node export-cloud-session.cjs",
+    "test:email": "node notify/dispatch.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GodOfCoding1/riot-client-notifier.git"
+  },
+  "keywords": [
+    "riot-client",
+    "riot-games",
+    "riot-client-notifier",
+    "riot-friend-notifier",
+    "valorant",
+    "league-of-legends",
+    "lol",
+    "teamfight-tactics",
+    "tft",
+    "legends-of-runeterra",
+    "lor",
+    "wild-rift",
+    "2xko",
+    "friend-notifier",
+    "windows-notifications",
+    "xmpp",
+    "presence",
+    "oauth2",
+    "powershell"
+  ]
 }

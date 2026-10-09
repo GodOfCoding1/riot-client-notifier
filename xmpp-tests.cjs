@@ -30,12 +30,14 @@ async function checks(){
   s.readyAt=Date.now()-13000;s.resources.set('rc1',[{puuid:'target',product:'valorant',state:'dnd'}]);assert.equal(classify((await s.snapshot('target')).presences),'valorant');passed++;console.log('PASS established healthy stream reports target presence');
   s.chat.connected=false;s.nextAttempt=Date.now()+30000;await assert.rejects(s.snapshot('target'));passed++;console.log('PASS disconnected stream is unknown, never stale online/offline');
   const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
+  if(process.platform==='win32') {
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'riot-notifier-test-'));
   try {
     const secure=require('./secure-session.cjs');const dummy={token:'synthetic-not-a-real-token',expiry:123};await secure.save(dummy,folder);
     assert.ok(!fs.readFileSync(path.join(folder,'session.dpapi'),'utf8').includes(dummy.token));assert.deepEqual(await secure.load(folder),dummy);
     passed++;console.log('PASS Windows user encryption round-trip stores no plaintext token');
   } finally {fs.unlinkSync(path.join(folder,'session.dpapi'));fs.rmdirSync(folder);}
+  } else console.log('SKIP Windows DPAPI integration on this platform');
   const expired=new StandalonePresence(__dirname);expired.puuid='target';expired.chat={connected:true,close(){this.connected=false;}};expired.authExpiry=Date.now()-1;expired.lastReceive=Date.now();
   let attempted=false;expired.connect=async()=>{attempted=true;assert.equal(expired.refreshNext,true);throw new Error('simulated renewal outage');};
   await assert.rejects(expired.snapshot('target'));assert.equal(attempted,true);assert.equal(expired.ready,false);passed++;console.log('PASS expiry triggers renewal; renewal outage remains unknown');

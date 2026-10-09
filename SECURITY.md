@@ -4,9 +4,9 @@ This unofficial utility uses the account authorization already saved by your Rio
 
 ## Sensitive files
 
-Keep Riot private settings, lockfiles, cookies, `.env` files, `*.dpapi` session caches, and generated diagnostics out of Git and public issue reports. The repository's `.gitignore` excludes known generated files, but review every change before publishing.
+Keep Riot private settings, lockfiles, cookies, `.env` files, `*.dpapi` and `*.enc` session caches, `*.key` files, and generated diagnostics out of Git and public issue reports. The repository's `.gitignore` excludes known generated files, but review every change before publishing.
 
-The installed session cache uses Windows CurrentUser DPAPI. It is not portable to Linux, and another process running as your Windows user may be able to decrypt it. No credentials are included in this repository.
+The Windows session cache uses CurrentUser DPAPI. It is not portable to Linux, and another process running as your Windows user may be able to decrypt it. Cloud mode uses AES-256-GCM with a separately provisioned key file. Both the key and encrypted cache together grant account access. Restrict their filesystem access and back up the latest rotated session. See [CLOUD.md](CLOUD.md) for provisioning. Export into a private Windows directory; Unix file modes do not enforce Windows ACLs. No credentials are included in this repository.
 
 ## Reporting
 

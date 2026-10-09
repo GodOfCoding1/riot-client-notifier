@@ -265,7 +265,7 @@ XMPP events update the cache immediately. The outer watcher evaluates that cache
 
 These controls deliberately miss very short game visits and cannot reconstruct transitions that happened entirely during an outage. `state.json` does not prove current health; it exists to preserve notification behavior.
 
-The named pipe in `watcher.cjs` provides a per-installation single-instance lock. `manage.ps1` also checks the exact Node executable and watcher command line before starting/stopping. This is not a process supervisor: automatic reconnect handles networking failures, but an unexpected Node process exit will not restart itself until you run Start or sign in again.
+The atomic PID lock directory in `instance-lock.cjs` provides a per-data-directory single-instance lock on Windows and Linux. Dead-PID locks are recovered on startup. `manage.ps1` also checks the exact Node executable and watcher command line before starting/stopping. This is not a process supervisor: automatic reconnect handles networking failures, but an unexpected Node process exit will not restart itself until you run Start or sign in again.
 
 ## 6. Day-to-day controls
 
@@ -362,7 +362,7 @@ $notifierDir = Join-Path $env:LOCALAPPDATA 'RiotFriendNotifier'
 & (Join-Path $notifierDir 'runtime\node.exe') (Join-Path $notifierDir 'multi-friend-tests.cjs')
 ```
 
-Together these run 48 checks. Most simulate state/protocol/health cases; one exercises Windows DPAPI with synthetic data, and another runs Windows management commands in a temporary installation. The multi-friend suite checks simultaneous independent alerts, separate departure/re-entry and retry behavior, restart deduplication, outage handling, shared resource isolation, roster resolution, atomic configuration changes, and legacy migration. The notification suite checks Gmail message formatting, toast-success with email retry, and Linux email gating. These do not prove live friend transitions.
+Together these run 48 checks on Windows; `cloud-tests.cjs` adds 8 runtime checks, and health-tests.cjs adds 5 independent health checks, for 61 total (59 on Linux). Most simulate state/protocol/health cases; one exercises Windows DPAPI with synthetic data, and another runs Windows management commands in a temporary installation. The multi-friend suite checks simultaneous independent alerts, separate departure/re-entry and retry behavior, restart deduplication, outage handling, shared resource isolation, roster resolution, atomic configuration changes, and legacy migration. The notification suite checks Gmail message formatting, toast-success with email retry, and Linux email gating. These do not prove live friend transitions.
 
 As last checked for this documentation, the installed process was running, sign-in startup was enabled, chat was connected through independent XMPP, and the target was in the healthy `other` state. That is a point-in-time observation; use Status for current information.
 
@@ -376,31 +376,24 @@ An ordinary Arduino UNO R3 is a microcontroller board rather than a Node/Linux c
 
 Some Arduino-branded devices have Linux-capable hardware, so the exact model matters. If you already have a microcontroller, a simpler role for it is receiving a compact notification from the server and blinking an LED/buzzer; leave Riot credentials and XMPP on the server.
 
-### Concrete portability blockers in the current code
+### Supported Windows and cloud profiles
 
-| Component | Current dependency | Required change |
+The repository now implements the cloud migration. Follow [CLOUD.md](CLOUD.md) for the complete setup procedure.
+
+| Component | Windows | Cloud / Linux |
 | --- | --- | --- |
-| Native login source | `saved-login.cjs` reads Windows LOCALAPPDATA and Riot's private YAML; **`Credentials.get()` reads this on every call, even with a valid cache** | Introduce a credential-source interface and explicitly provision renewable authorization on the server |
-| Session protection | Windows PowerShell + CurrentUser DPAPI | Use the server's secret store or encrypted state with a separately provisioned key; persist rotated tokens atomically |
-| Runtime | Bundled Windows `node.exe` | Install compatible Linux/ARM or Linux/x64 Node with the required modern APIs |
-| Notifications | Windows toast in `notify/windows.cjs`; Gmail SMTP in `notify/email.cjs` | On Linux, do not load the Windows adapter. The same dispatcher treats configured email as the gating channel. SMTP settings stay in `.env`. |
-| Single-instance lock | Windows named-pipe path | Use a Linux-compatible lock/socket or rely on one supervised service instance |
-| Startup/control | `.cmd`, `manage.ps1`, user Startup shortcut | Use a boot service such as systemd with restart-on-failure |
-| State and paths | Relative to installation directory | Separate immutable code from writable state and secrets |
-| Tests | DPAPI integration test is Windows-specific | Keep platform-neutral tests and replace the platform-storage integration test |
+| Credential source | Riot saved remember-me YAML, with source-change detection | One-time exported session, then persisted rotating refresh credentials |
+| Session storage | CurrentUser DPAPI | AES-256-GCM with a separately provisioned key file |
+| Notifications | Desktop toast with optional email | Email gates delivery and deduplication; no Windows adapter is loaded |
+| Runtime files | Installation directory by default | Separate `RIOT_DATA_DIR` |
+| Single instance | Atomic PID lock directory | Same lock implementation with stale-PID recovery |
+| Startup | Existing Windows installer and shortcuts | systemd unit with restart-on-failure |
+| Shutdown | Stop flag or process termination | SIGTERM/SIGINT closes chat and releases the lock |
+| Tests | Includes DPAPI and Windows manager integration | Shared tests plus encrypted session, renewal, lock and shutdown checks; skips Windows integration |
 
-Copying the source folder or the existing DPAPI file is **not sufficient**. Even a theoretically usable cached access token would be short-lived, and the current unconditional native-file read would fail on Linux first.
+Choose `RIOT_ENV=windows` or `RIOT_ENV=cloud`; the OS supplies the default. Cloud credentials never read Windows Riot settings. Export via `export-cloud-session.cjs` on Windows and securely transfer the session and key. DPAPI caches are not portable. Do not run multiple deployments that renew the same exported login concurrently. Persistent encrypted storage retains rotated refresh tokens, including when a later entitlement request fails.
 
-### Migration sequence
-
-1. Refactor authentication into `getToken()/refresh()` backed by a server credential store rather than Riot's Windows YAML. Keep private authorization out of source control and console output.
-2. Provision an authorized renewable session over a secure transfer/login path. Do not copy the entire Riot private-settings file or paste tokens into shell history. Confirm independently that renewal works from the new host. Windows DPAPI ciphertext cannot serve as the Linux credential source.
-3. Keep the existing XMPP framing, roster resolution, resource cache, classification, and debounce logic where possible. Install the vendored parser and a compatible runtime.
-4. Keep `notify/email.cjs` as the server alert channel and do not load Windows toast delivery. A powered-off Windows PC cannot display a desktop toast.
-5. Run one credential writer/service instance. Multiple hosts sharing a rotating refresh session can introduce races; all combinations of concurrent Riot launcher and multiple watchers have not been verified.
-6. Configure a non-root service account, writable state directory, boot startup, process crash restart, and sanitized health logs. Keep deduplication state across restarts. A service supervisor must not treat network unknown as friend offline.
-7. Ensure outbound DNS, HTTPS/TCP 443 to the authentication/configuration services, and TLS/TCP 5223 to the configured chat host. No public inbound listener or router port forwarding is needed for Riot monitoring itself. Use correct system time and a valid CA trust store.
-8. Test a server reboot, network outage, fresh authentication renewal, actual live friend entry, notification delivery, and a sustained soak across multiple real token renewals with the Windows PC off.
+The supplied systemd unit separates read-only code, writable state, and protected configuration. It uses no inbound listener. Live destination checks still need to cover renewal, friend entry, email delivery, outages, service restart, and a sustained soak with the Windows PC off.
 
 Cloud IPs, different regions, session revocation, authentication changes, DPoP-bound logins, and future protocol changes remain possible blockers. This Windows run does not prove that the same session will work from every cloud IP or indefinitely. A separate account would see only its own accepted friends and would require its own authorized login/roster setup.
 

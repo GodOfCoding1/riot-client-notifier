@@ -1,11 +1,14 @@
 # Contributing
 
-Use Windows and Node.js 22 or newer for the complete test suite. The XML parser is vendored, so dependency installation is unnecessary.
+Use Node.js 22 or newer on Windows or Linux. The XML parser is vendored, so dependency installation is unnecessary. Windows-only DPAPI and manager checks are skipped on Linux; CI runs both platforms.
 
 ```powershell
 node tests.cjs
 node xmpp-tests.cjs
 node multi-friend-tests.cjs
+node notify-tests.cjs
+node cloud-tests.cjs
+node health-tests.cjs
 ```
 
 The second suite includes a Windows DPAPI round-trip using synthetic data. The third checks independent multi-friend tracking, shared XMPP presence, atomic selection updates, legacy migration, and Windows management command integration. Most tests simulate protocol and transition cases; mark live experiments separately when reporting results.

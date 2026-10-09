@@ -29,22 +29,26 @@ async function chatAuth(token,entitlement,expiry) {
   return {token,pas,entitlement,host,domain:region+'.pvp.net',expiry};
 }
 class Credentials {
-  constructor(root=__dirname){this.root=root;this.session=null;this.loaded=false;this.auth=null;}
+  constructor(root=__dirname,io={}){this.root=root;this.session=null;this.loaded=false;this.auth=null;this.profile=io.profile||require('./runtime-config.cjs').runtimeConfig().profile;this.store=io.store||(this.profile==='cloud'?require('./cloud-session.cjs'):secure);this.readLogin=io.readLogin||readSavedLogin;this.refresh=io.refresh||refreshSavedLogin;this.fetch=io.fetch||fetch;this.chatAuth=io.chatAuth||chatAuth;}
   async get(forceRefresh=false) {
-    const saved=readSavedLogin();
-    const sourceHash=crypto.createHash('sha256').update(saved.refreshToken).digest('hex');
-    if(!this.loaded){this.session=await secure.load(this.root);this.loaded=true;}
-    if(this.session?.sourceHash!==sourceHash){this.session={...saved,sourceHash};this.auth=null;}
-    if(forceRefresh||!this.session.token||!this.session.entitlement||this.session.expiry<Date.now()+90000){
+    if(!this.loaded){this.session=await this.store.load(this.root);this.loaded=true;}
+    const saved=this.profile==='windows'?this.readLogin():this.session;
+    if(!saved?.refreshToken)throw new Error('Saved Riot login unavailable');
+    const sourceHash=this.profile==='windows'?crypto.createHash('sha256').update(saved.refreshToken).digest('hex'):undefined;
+    if(this.profile==='windows'&&this.session?.sourceHash!==sourceHash){this.session={...saved,sourceHash};this.auth=null;}
+    if(forceRefresh||!this.session.token||!this.session.entitlement||!Number.isFinite(this.session.expiry)||this.session.expiry<Date.now()+90000){
       let renewed;
-      try {renewed=await refreshSavedLogin(this.session);}catch(error){if(this.session.refreshToken===saved.refreshToken)throw error;renewed=await refreshSavedLogin(saved);}
-      const response=await fetch('https://entitlements.auth.riotgames.com/api/token/v1',{method:'POST',headers:{Authorization:'Bearer '+renewed.token,'Content-Type':'application/json'},body:'{}',redirect:'error',signal:AbortSignal.timeout(10000)});
+      try {renewed=await this.refresh(this.session);}catch(error){if(this.profile==='cloud'||this.session.refreshToken===saved.refreshToken)throw error;renewed=await this.refresh(saved);}
+      // Persist rotated refresh credentials before a later entitlement request can fail.
+      this.session={...renewed,sourceHash,dpopBound:false};
+      await this.store.save(this.session,this.root);
+      const response=await this.fetch('https://entitlements.auth.riotgames.com/api/token/v1',{method:'POST',headers:{Authorization:'Bearer '+renewed.token,'Content-Type':'application/json'},body:'{}',redirect:'error',signal:AbortSignal.timeout(10000)});
       const entitlement=response.ok?await response.json():null;
       if(!entitlement?.entitlements_token)throw new Error('chat entitlement unavailable');
       this.session={...renewed,entitlement:entitlement.entitlements_token,sourceHash,dpopBound:false};
-      await secure.save(this.session,this.root);this.auth=null;
+      await this.store.save(this.session,this.root);this.auth=null;
     }
-    if(!this.auth)this.auth=await chatAuth(this.session.token,this.session.entitlement,this.session.expiry);
+    if(!this.auth)this.auth=await this.chatAuth(this.session.token,this.session.entitlement,this.session.expiry);
     return this.auth;
   }
 }

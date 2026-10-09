@@ -18,7 +18,7 @@ async function updateFriends(root, action, riotIds, resolve = resolveFriends) {
     friends = existing.filter(f => !ids.has(f.riotId.toLowerCase()));
     if (!friends.length) throw new Error('Keep at least one monitored friend; use Stop to pause monitoring');
   } else {
-    const resolved = await resolve(riotIds);
+    const resolved = await resolve(riotIds, root);
     friends = [...new Map([...existing, ...resolved].map(f => [f.puuid, f])).values()];
   }
   const updated = {friends, pollSeconds: 12, mode: action === 'replace' ? 'standalone' : (config.mode || 'standalone')};
@@ -29,7 +29,9 @@ async function updateFriends(root, action, riotIds, resolve = resolveFriends) {
 if (require.main === module) {
   const args = process.argv.slice(2);
   const action = args[0]?.startsWith('--') ? args.shift().slice(2) : 'replace';
-  updateFriends(__dirname, action, args.flatMap(arg => arg.split(','))).then(friends => {
+  const {root} = require('./runtime-config.cjs').initialize();
+  fs.mkdirSync(root, {recursive:true, mode:0o700});
+  updateFriends(root, action, args.flatMap(arg => arg.split(','))).then(friends => {
     console.log('Now watching ' + friends.map(f => f.riotId).join(', ') + ' by PUUID.');
   }).catch(e => {
     const safe = ['Use Name#TAG', 'Invalid action', 'Friend not found uniquely in your Riot friends list', 'friends unavailable', 'Friend is not monitored', 'Keep at least one monitored friend; use Stop to pause monitoring'];

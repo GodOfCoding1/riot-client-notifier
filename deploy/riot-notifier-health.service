@@ -1,0 +1,26 @@
+[Unit]
+Description=Independent Riot notifier health checks and alerts
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=riot-notifier
+Group=riot-notifier
+WorkingDirectory=/opt/riot-notifier
+Environment=RIOT_ENV=cloud
+Environment=RIOT_DATA_DIR=/var/lib/riot-notifier
+EnvironmentFile=/etc/riot-notifier/notifier.env
+ExecStart=/usr/local/bin/node /opt/riot-notifier/health-guard.cjs
+Restart=always
+RestartSec=10
+TimeoutStopSec=45
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/riot-notifier
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

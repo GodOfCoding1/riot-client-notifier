@@ -43,3 +43,17 @@ Live checks completed between approximately 20:00 and 20:11 IST.
 * Startup removal was exercised and verified, then restored. The change-friend command safely preserved its existing configuration when invoked during the real API outage; after recovery it successfully resolved and saved ExampleFriend#TAG again.
 
 No live offline-to-Valorant friend transition occurred during setup. Friend transition behavior was simulated, along with full service restart and disconnected-session edge cases. No WebSocket event support is claimed; this installation polls every 12 seconds.
+# Cloud deployment verification — 2026-10-09
+
+The cloud profile was deployed to `automation-server` in project `personalvm-511016`, zone `us-central1-a`, using Node 24.21.0. The Linux test suites passed; Windows DPAPI/manager integration were skipped. Exported authorization refreshed successfully from the VM and established Riot XMPP chat. All three existing monitored friends reached healthy presence observations. The VM submitted a test email and a real VALORANT presence alert through the configured SMTP channel; inbox receipt was not independently checked.
+
+The system service `riot-notifier` is enabled at boot. A deliberate SIGKILL of its main process caused systemd to restart it after 15 seconds, recover the stale PID lock, and reconnect to Riot. Saved per-friend state retained the prior alert after restart. Runtime secrets use restricted permissions and the encrypted session lives on persistent disk. The existing example automation service was left in place. Windows notifier sign-in startup was disabled to prevent competing session renewal.
+
+This verification does not include rebooting the VM or waiting for a natural one-hour token expiry. See [the deployment runbook](deploy/GCLOUD.md) for operations.
+# Failure alert verification — 2026-10-09
+
+Five deterministic health tests passed on Windows and Linux. They cover stale status, old-process status, a single unknown friend, healthy offline friends, grace periods, stopped services, pending email delivery, persisted incident deduplication, recovery after usable observations resume, crash notice throttling, and retrying failed health emails.
+
+The independent `riot-notifier-health` system service and Google Cloud uptime alert policy were installed and enabled. A deliberate watcher crash was recovered by systemd and produced an unexpected-restart email verified in the recipient inbox. Six Google check locations first reported the health endpoint as passing. The health service was then deliberately stopped for four minutes with a systemd timer scheduled to restore it; the friend watcher continued running. All six external probes reported failure, and Google's independent outage email was verified in the recipient inbox. The timer restored the health service; both services were active and the endpoint returned HTTP 200 again.
+
+The Google recovery email was also verified in the recipient inbox after all six probes resumed passing. This exercises the externally unreachable-endpoint path without shutting down the VM. The VM itself was not rebooted or stopped for this test. Unknown-friend and SMTP-failure thresholds were verified with synthetic cases; inbox delivery during a future outage still depends on the notification providers and recipient mailbox.

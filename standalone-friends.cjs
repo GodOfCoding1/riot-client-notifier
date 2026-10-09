@@ -1,11 +1,11 @@
 'use strict';
 const {Credentials}=require('./standalone-auth.cjs');
 const {Chat,child}=require('./xmpp.cjs');
-async function resolveFriends(riotIds) {
+async function resolveFriends(riotIds, root=__dirname) {
   if(!riotIds.length||riotIds.some(id=>typeof id!=='string'||!/^[^#]+#[^#]+$/.test(id)))throw new Error('Use Name#TAG');
   const chat=new Chat();
   try {
-    const auth=await new Credentials().get();
+    const auth=await new Credentials(root).get();
     let rosterResolve;const roster=new Promise(resolve=>rosterResolve=resolve);
     chat.on('stanza',s=>{if(s.name==='iq'&&s.attrs.id==='roster')rosterResolve(s);});
     await chat.connect(auth);

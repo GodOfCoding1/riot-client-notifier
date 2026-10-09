@@ -2,13 +2,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {sendEmail} = require('./email.cjs');
-const {sendWindowsToast} = require('./windows.cjs');
 
 const SMTP_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM', 'EMAIL_TO'];
 
 function loadEnv(root) {
   const file = path.join(root, '.env');
-  if (!fs.existsSync(file)) return {};
+  if (!fs.existsSync(file)) return {...process.env};
   const snapshot = {...process.env};
   try {
     process.loadEnvFile(file);
@@ -35,9 +34,9 @@ function smtpConfig(env = {}) {
 
 function alertText(riotId) {return riotId + ' is online in VALORANT.';}
 
-function createNotifier({root, log = () => {}, platform = process.platform, env, sendToast, sendMail} = {}) {
+function createNotifier({root, log = () => {}, platform = process.platform, profile, env, sendToast, sendMail} = {}) {
   const smtp = smtpConfig(env || (root ? loadEnv(root) : {}));
-  const windows = platform === 'win32';
+  const windows = platform === 'win32' && profile !== 'cloud';
   // Windows toast gates dedupe. Where that channel does not exist, configured email does.
   const emailGates = !windows && smtp.configured;
   let lastEmailError = 'SMTP error';
@@ -45,7 +44,7 @@ function createNotifier({root, log = () => {}, platform = process.platform, env,
     host: smtp.host, port: smtp.port, user: smtp.user, pass: smtp.pass, from: smtp.from, to: smtp.to,
     subject: 'Riot Client Notifier', text: alertText(riotId),
   }));
-  const toast = sendToast || (riotId => sendWindowsToast(root, riotId, log));
+  const toast = sendToast || (riotId => require('./windows.cjs').sendWindowsToast(path.join(__dirname, '..'), riotId, log));
   const delivery = smtp.configured ? {
     emailGates,
     email: async riotId => {
@@ -84,7 +83,7 @@ async function sendTestEmail(root) {
 }
 
 if (require.main === module) {
-  sendTestEmail(path.join(__dirname, '..')).then(() => {console.log('Test email submitted.');})
+  sendTestEmail(require('../runtime-config.cjs').initialize().root).then(() => {console.log('Test email submitted.');})
     .catch(error => {
       console.error(error.message);
       process.exitCode = error.code === 'UNCONFIGURED' ? 2 : 1;

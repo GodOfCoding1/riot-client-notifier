@@ -1,7 +1,15 @@
 *.dpapi
 *.dpapi.tmp
+*.enc
+*.enc.tmp
+*.key
+watcher.lock*/
+data/
+cloud-export/
 config.json
 state.json*
+health.json*
+health-state.json*
 status.json*
 watcher*.log
 watcher.pid

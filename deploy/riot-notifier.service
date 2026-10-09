@@ -1,0 +1,28 @@
+[Unit]
+Description=Riot friend presence notifier
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=riot-notifier
+Group=riot-notifier
+WorkingDirectory=/opt/riot-notifier
+Environment=RIOT_ENV=cloud
+Environment=RIOT_DATA_DIR=/var/lib/riot-notifier
+Environment=RIOT_SESSION_KEY_FILE=/etc/riot-notifier/session.key
+EnvironmentFile=/etc/riot-notifier/notifier.env
+ExecStart=/usr/bin/node /opt/riot-notifier/watcher.cjs
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=60
+StateDirectory=riot-notifier
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

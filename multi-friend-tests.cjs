@@ -144,7 +144,8 @@ async function checks() {
   });
   await test('Windows manager dispatches comma-separated removals and preserves config on failure', () => {
     const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'riot-manager-test-'));
-    const copied = ['manage.ps1', 'resolve-friend.cjs', 'monitor.cjs', 'presence.cjs', 'standalone-friends.cjs', 'standalone-auth.cjs', 'saved-login.cjs', 'secure-session.cjs', 'xmpp.cjs', 'vendor/package/lib/sax.js'];
+    if (process.platform !== 'win32') {console.log('SKIP Windows manager integration on this platform'); return;}
+    const copied = ['runtime-config.cjs', 'cloud-session.cjs', 'manage.ps1', 'resolve-friend.cjs', 'monitor.cjs', 'presence.cjs', 'standalone-friends.cjs', 'standalone-auth.cjs', 'saved-login.cjs', 'secure-session.cjs', 'xmpp.cjs', 'vendor/package/lib/sax.js'];
     const directories = ['runtime', 'vendor', 'vendor/package', 'vendor/package/lib'];
     const runtime = path.join(folder, 'runtime/node.exe');
     try {

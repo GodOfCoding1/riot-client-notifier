@@ -18,7 +18,7 @@ $existingManage = Join-Path $installDir 'manage.ps1'
 if (Test-Path -LiteralPath $existingManage) { & $existingManage -Action Stop }
 $runtimeSource = (Get-Command node.exe -ErrorAction Stop).Source
 Copy-Item -LiteralPath $runtimeSource -Destination (Join-Path $runtimeDir 'node.exe') -Force
-foreach ($name in @('riot-api.cjs','presence.cjs','monitor.cjs','multi-friend-tests.cjs','watcher.cjs','resolve-friend.cjs','toast.ps1','manage.ps1','tests.cjs','notify-tests.cjs','README.md','TECHNICAL-GUIDE.md','standalone-auth.cjs','standalone-presence.cjs','standalone-friends.cjs','saved-login.cjs','secure-session.cjs','protect-session.ps1','xmpp.cjs','xmpp-tests.cjs','verification.md','.env.example')) {
+foreach ($name in @('runtime-config.cjs','instance-lock.cjs','cloud-session.cjs','riot-api.cjs','presence.cjs','monitor.cjs','multi-friend-tests.cjs','watcher.cjs','resolve-friend.cjs','toast.ps1','manage.ps1','tests.cjs','notify-tests.cjs','README.md','TECHNICAL-GUIDE.md','standalone-auth.cjs','standalone-presence.cjs','standalone-friends.cjs','saved-login.cjs','secure-session.cjs','protect-session.ps1','xmpp.cjs','xmpp-tests.cjs','verification.md','.env.example')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $installDir $name) -Force
 }
 $notifyDir = Join-Path $installDir 'notify'

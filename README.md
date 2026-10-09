@@ -1,8 +1,8 @@
-# Riot Client Notifier — Windows Friend Online Alerts
+# Riot Client Notifier — Windows and Cloud Friend Alerts
 
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4)](#requirements) [![Node.js: 22+](https://img.shields.io/badge/Node.js-22%2B-339933)](#installation) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-0078D4)](#requirements) [![Node.js: 22+](https://img.shields.io/badge/Node.js-22%2B-339933)](#installation) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Riot Client Notifier** is a lightweight Windows desktop notification app for Riot Games friends. It currently alerts when a friend comes online in **VALORANT**, even with Riot Client and VALORANT closed. The Node.js watcher connects to Riot's XMPP chat service, renews your saved remember-me login, and tracks friends by their stable PUUID.
+**Riot Client Notifier** is a lightweight friend presence monitor with Windows desktop and Linux/cloud email profiles. It currently alerts when a friend comes online in **VALORANT**, even with Riot Client and VALORANT closed. The Node.js watcher connects to Riot's XMPP chat service, renews your saved remember-me login, and tracks friends by their stable PUUID.
 
 Looking for a Riot Client friend notifier, a VALORANT online alert, or a Riot Games presence notification? This app alerts when a selected Riot friend enters VALORANT. Riot's wider game ecosystem also includes **League of Legends (LoL), Teamfight Tactics (TFT), Legends of Runeterra (LoR), League of Legends: Wild Rift, and 2XKO**. Those titles are included as Riot ecosystem keywords; this project's friend activity alerts currently detect VALORANT presence only. Read the [technical guide to Riot authentication and friend presence](TECHNICAL-GUIDE.md).
 
@@ -19,7 +19,14 @@ Looking for a Riot Client friend notifier, a VALORANT online alert, or a Riot Ga
 - Windows DPAPI encryption for the watcher's session cache; no passwords in configuration.
 - Vendored streaming XML parser; no npm dependency installation required.
 
-## Requirements
+## Choose your environment
+
+- **Windows desktop:** use the existing PowerShell installer below. It uses your saved Riot login, DPAPI, desktop notifications, and optional email.
+- **Linux / cloud VM:** follow [CLOUD.md](CLOUD.md). It uses a securely exported encrypted session, email alerts, a separate data directory, and a systemd service.
+
+Set `RIOT_ENV=windows` or `RIOT_ENV=cloud` explicitly, or let the OS select the default. Both profiles use the same monitoring code. GCloud deployment can be done separately.
+
+## Windows requirements
 
 - Windows with Windows PowerShell and desktop notification support.
 - [Node.js](https://nodejs.org/en/download) 22 or newer available as `node` in your terminal.
@@ -116,15 +123,16 @@ node .\tests.cjs
 node .\xmpp-tests.cjs
 node .\multi-friend-tests.cjs
 node .\notify-tests.cjs
+node .\cloud-tests.cjs
 ```
 
-The project has 48 transition, protocol, health, encryption, multi-friend, and email-delivery checks, including Windows management command integration. Read the [verification record](verification.md) for the distinction between live evidence and simulated checks. Networking recovery is automatic; unexpected Node process exits currently require Start or a new sign-in.
+The project has 61 transition, protocol, health, encryption, multi-friend, email-delivery, and runtime checks on Windows (59 on Linux), including Windows management command integration. Read the [verification record](verification.md) for the distinction between live evidence and simulated checks. Cloud process recovery is handled by systemd; Windows process exits require Start or a new sign-in.
 
 ## Raspberry Pi, Linux, and cloud servers
 
-The direct-chat design is suitable for a future always-on server, but **this installation is Windows-specific**. Gmail delivery in `notify/email.cjs` is plain Node SMTP and becomes the gating alert where Windows toasts are unavailable. Linux migration still requires replacing the saved-login-file provider, DPAPI storage, named-pipe lock, and startup management. Copying the folder or encrypted cache is not sufficient.
+Linux and cloud VMs are supported by the cloud runtime profile. See [CLOUD.md](CLOUD.md) for session export, email configuration, friend selection, persistent state, and service installation. Windows DPAPI caches cannot be transferred to Linux. Cloud authentication and live alert delivery must be verified on the destination VM.
 
-A Linux Raspberry Pi or VPS is a practical target. A conventional Arduino microcontroller would need a separate firmware implementation. Receiving alerts while the Windows PC is off also requires a phone-accessible notification channel. See the [migration section](TECHNICAL-GUIDE.md#8-moving-to-an-always-on-device-or-server).
+The configured GCloud deployment includes independent failure and recovery email alerts. See [monitoring health](deploy/HEALTH.md) for how stale checks, unknown friend status, stopped processes, and VM outages are detected.
 
 ## Documentation and development
 
